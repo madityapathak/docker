@@ -1,0 +1,80 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    volumes:
+      - static-data:/vol/web
+    image: myapp:v1
+    env_file:
+      - settings.ini
+    develop:
+      watch:
+        - action: rebuild
+          path: ./app
+          target: /app
+        - action: rebuild
+          path: requirements.txt
+          target: requirements.txt
+        - action: rebuild
+          path: ./settings.ini
+    depends_on:
+      - postgres_db
+
+  postgres_db:
+    image: postgres:13-alpine
+    restart: always
+    command: -p 5434
+    env_file:
+      - settings.ini
+    expose:
+      - 5434
+    # ports:    
+    #  - "5434:5434"
+    # opening ports like this may make our app vulnerable as it routes sysstem port
+    # which are accessibe outside docker into our docker ports its just a hunch i 
+    # might be wrong
+     
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+
+  redis_db:
+    image: redis
+    restart: always
+    expose:
+      - 6388
+    volumes:
+        - redis_data:/data
+    entrypoint: redis-server --appendonly yes --port 6388
+
+  proxy:
+    build:
+      context: ./proxy
+    restart: always
+    depends_on:
+      - app
+    ports:
+      - 80:80
+    volumes:
+      - static-data:/vol/static
+
+  dns:
+    build:
+      context: ./dns/
+    restart: always
+    expose:
+      - 53
+      - 53/udp
+    volumes:
+      - ./dns/named.conf:/etc/bind/named.conf
+      - ./dns/zone/:/etc/bind/zone/
+    command: named -c /etc/bind/named.conf -g -u named
+
+volumes:
+  postgres-data:
+  static-data:
+  redis_data:

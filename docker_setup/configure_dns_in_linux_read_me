@@ -1,0 +1,7 @@
+sudo apt install bind9
+
+sudo nano /etc/bind/named.conf.options                  this will open a file chanage the value in forwarder to 127.0.0.1 and save
+
+sudo ufw allow bind9
+sudo systemctl restart bind9
+sudo systemctl status bind9
